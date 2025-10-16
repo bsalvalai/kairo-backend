@@ -6,9 +6,9 @@ const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcryptjs');
-const { body, validationResult } = require('express-validator');
+const { body, validationResult, param } = require('express-validator');
 
-//Hola
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -613,7 +613,7 @@ app.get('/api/health', async (req, res) => {
 
   res.json({
     success: true,
-    message: 'Servidor funcionando correctamente - SPRINT 3',
+    message: 'Servidor funcionando correctamente - SPRINT 4',
     timestamp: new Date().toISOString(),
   });
 });
@@ -1270,6 +1270,81 @@ app.put('/api/tasks/:taskId', [
       success: false,
       message: 'Error interno del servidor'
     });
+  }
+});
+
+app.get('/priority/:username', [
+  param('username').notEmpty().withMessage('El nombre de usuario es requerido'),
+
+], async (req, res) => {
+  try {
+      if (!supabase) return res.status(500).json({ success: false, message: 'Fallo al inicializar Supabase' });
+
+      const { username } = req.params;
+
+      // 1. Buscar el ID del usuario
+      const { data: user, error: userError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('username', username)
+          .limit(1)
+          .maybeSingle();
+
+      if (userError) {
+          console.error('Error al buscar usuario:', userError);
+          return res.status(500).json({ success: false, message: 'Error al buscar el usuario' });
+      }
+
+      if (!user) {
+          return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+      }
+
+      const userId = user.id;
+
+      // 2. Buscar en 'asignaciones' donde es_prioridad es TRUE Y id_user coincide, y hacer JOIN con 'tareas'
+      const { data: asignaciones, error: asignacionesError } = await supabase
+          .from('asignaciones')
+          .select(`
+              esPrioridad,
+              tareas (*)
+          `)
+          .eq('id_user', userId) // <-- FILTRO POR USUARIO ESPECÍFICO
+          .eq('esPrioridad', true) // Filtramos solo las asignaciones prioritarias
+          .order('id_tarea', { ascending: false }); 
+
+      if (asignacionesError) {
+          console.error('Error al buscar tareas prioritarias del usuario:', asignacionesError);
+          return res.status(500).json({ success: false, message: 'Error al buscar las tareas prioritarias del usuario' });
+      }
+
+      // 3. Formatear la respuesta extrayendo los datos de la tarea
+      const tareasPrioritarias = asignaciones.map(asignacion => ({
+          id: asignacion.tareas.id,
+          titulo: asignacion.tareas.titulo,
+          descripcion: asignacion.tareas.descripcion,
+          prioridad: asignacion.tareas.prioridad,
+          fechaCreacion: asignacion.tareas.fecha_creacion,
+          fechaVencimiento: asignacion.tareas.fecha_vencimiento,
+          estado: asignacion.tareas.estado,
+          asignadoPor: asignacion.tareas.asignado_por,
+          nota: asignacion.tareas.nota,
+          esPrioridad: asignacion.es_prioridad, 
+          ultimaActualizacion: asignacion.tareas.ultima_actualizacion
+      }));
+
+      res.json({
+          success: true,
+          message: `Total de ${tareasPrioritarias.length} tareas marcadas como prioritarias por el usuario ${username}.`,
+          usuario: {
+              username: username,
+              id: userId
+          },
+          tareasPrioritarias: tareasPrioritarias,
+      });
+
+  } catch (error) {
+      console.error('Error en consulta de tareas prioritarias de usuario:', error);
+      res.status(500).json({ success: false, message: 'Error interno del servidor' });
   }
 });
 
