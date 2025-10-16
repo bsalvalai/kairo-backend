@@ -8,7 +8,7 @@ const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 
-
+//Hola
 const app = express();
 const PORT = process.env.PORT || 3000;
 
