@@ -11,10 +11,5 @@
   },
   "functions": {
     "index.js": { "maxDuration": 30 }
-  },
-  "build": {
-    "env": {
-      "VERCEL_FORCE_BUILD": "1"
-    }
   }
 }

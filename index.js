@@ -1,7 +1,4 @@
-import { config } from 'dotenv';
-import { resolve } from 'path';
-
-config({ path: resolve(__dirname, '.env') });
+import 'dotenv/config';
 import express, { json } from 'express';
 import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
@@ -40,11 +37,15 @@ app.use((req, res) => {
   });
 });
 
+
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Servidor corriendo en puerto ${PORT}`);
+    console.log(`Health check: http://localhost:${PORT}/api/health`);
+  });
+}
 // Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/api/health`);
-});
+
 
 // Para Vercel: exportar la app como función
-//export default serverless(app);
+export default serverless(app);
