@@ -1,25 +1,24 @@
-const dotenv = require('dotenv');
-const path = require('path');
+import { config } from 'dotenv';
+import { resolve } from 'path';
 
-dotenv.config({ path: path.resolve(__dirname, '.env') });
-const express = require('express');
-const cors = require('cors');
-const { createClient } = require('@supabase/supabase-js');
-const bcrypt = require('bcryptjs');
-const { body, validationResult } = require('express-validator');
+config({ path: resolve(__dirname, '.env') });
+import express, { json } from 'express';
+import cors from 'cors';
+import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
+import { body, validationResult } from 'express-validator';
+import userRoutes from './routes/userRoutes.js';
+import taskRoutes from './routes/taskRoutes.js';
+import __dirname from "./utils.js"
 
-//Porfas NUMERO 800
+import serverless from 'serverless-http';
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
-
-//
-
-const userRoutes = require('./routes/userRoutes');
-const taskRoutes = require('./routes/taskRoutes');
+app.use(json());
 
 app.use('/api', userRoutes);
 app.use('/api/tasks', taskRoutes);
@@ -41,8 +40,11 @@ app.use((req, res) => {
   });
 });
 
-
-const serverless = require('serverless-http');
+// Iniciar servidor
+app.listen(PORT, () => {
+  console.log(`Servidor corriendo en puerto ${PORT}`);
+  console.log(`Health check: http://localhost:${PORT}/api/health`);
+});
 
 // Para Vercel: exportar la app como función
-module.exports = serverless(app);
+//export default serverless(app);

@@ -1,11 +1,11 @@
 // Configurar entorno de test
 process.env.NODE_ENV = 'test';
 
-const request = require('supertest');
-const { expect } = require('chai');
-const sinon = require('sinon');
-const bcrypt = require('bcryptjs');
-const proxyquire = require('proxyquire');
+import request from 'supertest';
+import { expect } from 'chai';
+import { stub, restore } from 'sinon';
+import bcrypt from 'bcryptjs';
+import proxyquire from 'proxyquire';
 
 // ----------------------------------------------------------------
 // 1. MOCKS DE SINON
@@ -15,21 +15,21 @@ const proxyquire = require('proxyquire');
 // Usa returnsThis() para que todos los métodos intermedios puedan encadenarse.
 const mockQueryBuilder = {
     // Métodos intermedios encadenados
-    select: sinon.stub().returnsThis(),
-    or: sinon.stub().returnsThis(),
-    eq: sinon.stub().returnsThis(),
-    neq: sinon.stub().returnsThis(),
-    limit: sinon.stub().returnsThis(),
-    insert: sinon.stub().returnsThis(), // insert también retorna el builder
+    select: stub().returnsThis(),
+    or: stub().returnsThis(),
+    eq: stub().returnsThis(),
+    neq: stub().returnsThis(),
+    limit: stub().returnsThis(),
+    insert: stub().returnsThis(), // insert también retorna el builder
     
     // Métodos finales que devuelven Promesas
-    single: sinon.stub(), 
-    maybeSingle: sinon.stub(),
+    single: stub(), 
+    maybeSingle: stub(),
 };
 
 // Objeto principal del cliente Supabase: .from() debe devolver el Query Builder.
 const mockSupabaseClient = {
-    from: sinon.stub().returns(mockQueryBuilder),
+    from: stub().returns(mockQueryBuilder),
 };
 
 let app;
@@ -43,13 +43,13 @@ describe('API Auth Endpoints', () => {
     // Configuración que se ejecuta antes de cada test
     beforeEach(() => {
         // Simular bcrypt.hash() para devolver un valor constante
-        bcryptStub = sinon.stub(bcrypt, 'hash').resolves('hashed_password_mock');
+        bcryptStub = stub(bcrypt, 'hash').resolves('hashed_password_mock');
         
         // Cargar la aplicación, forzando que use nuestro mockSupabaseClient
         app = proxyquire('../index', {
             // Asegura que tu código usa este mock cuando llama a createClient()
             '@supabase/supabase-js': {
-                createClient: sinon.stub().returns(mockSupabaseClient) 
+                createClient: stub().returns(mockSupabaseClient) 
             }
         });
         
@@ -63,7 +63,7 @@ describe('API Auth Endpoints', () => {
     // Limpieza que se ejecuta después de cada test
     afterEach(() => {
         // Restaura todos los stubs y espías a sus implementaciones originales
-        sinon.restore();
+        restore();
     });
 
     // ----------------------------------------------------------------

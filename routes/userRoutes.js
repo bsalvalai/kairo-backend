@@ -1,14 +1,14 @@
-const express = require('express');
-const { body, validationResult } = require('express-validator');
-const bcrypt = require('bcryptjs');
-const { createClient } = require('@supabase/supabase-js');
+import { Router } from 'express';
+import { body, validationResult } from 'express-validator';
+import { hash, compare } from 'bcryptjs';
+import { createClient } from '@supabase/supabase-js';
 
-const router = express.Router();
+const router = Router();
 const saltRounds = 10; // Definimos el factor de encriptación una sola vez
 const MAX_ATTEMPTS = 5; // Límite de intentos fallidos
 const BLOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutos en milisegundos
 
-const supabase = require('./supabaseClient');
+import supabase from '../supabaseClient.js';
 
 // ----------------------------------------------------------------
 // POST /register 
@@ -42,8 +42,7 @@ router.post('/register', [
         const { email, username, password, firstName, lastName, recoveryAnswer } = req.body;
 
         // 2. Verificar si el usuario ya existe
-        const { data: existingUser, error: checkError } = await supabase
-            .from('users')
+        const { data: existingUser, error: checkError } = await supabase.from('users')
             .select('email, username')
             .or(`email.eq.${email},username.eq.${username}`)
             .limit(1)
@@ -67,12 +66,11 @@ router.post('/register', [
 
         // 3. Encriptar contraseña
         const saltRounds = 10;
-        const hashedPassword = await bcrypt.hash(password, saltRounds);
-        const hashedrecoveryAnswer = await bcrypt.hash(recoveryAnswer, saltRounds);
+        const hashedPassword = await hash(password, saltRounds);
+        const hashedrecoveryAnswer = await hash(recoveryAnswer, saltRounds);
 
         // 4. Crear usuario en la base de datos
-        const { data, error } = await supabase
-            .from('users')
+        const { data, error } = await supabase.from('users')
             .insert([{
                 email: email,
                 username: username,
@@ -130,8 +128,7 @@ router.post('/login', [
         // 1. Lógica de búsqueda por Email o Username
         // Nota: El campo 'email' de la petición contiene el email o el username
         if (email.includes('@')) { // Asumimos que si contiene '@' es un email
-             const { data: userData, error } = await supabase
-                 .from('users')
+             const { data: userData, error } = await supabase.from('users')
                  .select('*')
                  .eq('email', email)
                  .limit(1)
@@ -145,8 +142,7 @@ router.post('/login', [
              }
         } else {
             // Conseguir usuario mediante el username
-            const { data: userData, error } = await supabase
-                .from('users')
+            const { data: userData, error } = await supabase.from('users')
                 .select('*')
                 .eq('username', email)
                 .limit(1)
@@ -183,8 +179,7 @@ router.post('/login', [
         // B) Reinicio del Contador si el bloqueo expiró
         if (userCount >= MAX_ATTEMPTS && lastLoginAttempt <= fiveMinutesAgo) {
             // Reiniciamos el contador y actualizamos el timestamp del último intento
-            const { error: updateError } = await supabase
-                .from('users')
+            const { error: updateError } = await supabase.from('users')
                 .update({ count: 0, last_login_attempt: new Date().toISOString() })
                 .eq('id', user.id);
                 
@@ -197,14 +192,13 @@ router.post('/login', [
         }
 
         // 3. Verificar Contraseña
-        const isValidPassword = await bcrypt.compare(password, user.password);
+        const isValidPassword = await compare(password, user.password);
         
         if (!isValidPassword) {
             // Contraseña incorrecta: Aumentar contador de intentos fallidos
             const newCount = user.count + 1;
             
-            const { error: updateError } = await supabase
-                .from('users')
+            const { error: updateError } = await supabase.from('users')
                 .update({ count: newCount, last_login_attempt: new Date().toISOString() })
                 .eq('id', user.id);
 
@@ -218,8 +212,7 @@ router.post('/login', [
         
         // 4. Login Exitoso: Reiniciar Contador (si no fue reiniciado antes)
         if (user.count > 0) {
-            const { error: updateError } = await supabase
-                .from('users')
+            const { error: updateError } = await supabase.from('users')
                 .update({ count: 0, last_login_attempt: new Date().toISOString() })
                 .eq('id', user.id);
 
@@ -256,8 +249,7 @@ router.post('/recovery', [
         const { email, password, recoveryAnswer } = req.body;
 
         // 1. Buscar usuario por email (necesitamos la respuesta hasheada)
-        const { data: user, error } = await supabase
-            .from('users')
+        const { data: user, error } = await supabase.from('users')
             .select('id, email, username, first_name, last_name, recovery_answer')
             .eq('email', email)
             .limit(1)
@@ -275,16 +267,15 @@ router.post('/recovery', [
         }
 
         // 2. Verificar pregunta de recuperación
-        const isValidRecoveryAnswer = await bcrypt.compare(recoveryAnswer, user.recovery_answer);
+        const isValidRecoveryAnswer = await compare(recoveryAnswer, user.recovery_answer);
         if (!isValidRecoveryAnswer) {
             return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
         }
 
         // 3. Encriptar y actualizar contraseña
-        const hashedPassword = await bcrypt.hash(password, saltRounds);
+        const hashedPassword = await hash(password, saltRounds);
 
-        const { data: updatedUser, error: updateError } = await supabase
-        .from('users')
+        const { data: updatedUser, error: updateError } = await supabase.from('users')
         .update({ password: hashedPassword })
         .eq('id', user.id)
         .select();
@@ -308,4 +299,4 @@ router.post('/recovery', [
     }
 });
 
-module.exports = router;
+export default router;

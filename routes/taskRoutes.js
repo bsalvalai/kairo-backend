@@ -1,11 +1,11 @@
-const express = require('express');
-const { body, validationResult, param } = require('express-validator');
-const { createClient } = require('@supabase/supabase-js');
+import { Router } from 'express';
+import { body, validationResult, param } from 'express-validator';
+import { createClient } from '@supabase/supabase-js';
 // Importamos la función de conexión a Supabase y la clase Router
 
-const router = express.Router();
+const router = Router();
 
-const supabase = require('./supabaseClient');
+import supabase from '../supabaseClient.js';
 
 // ----------------------------------------------------------------
 // POST /
@@ -42,8 +42,7 @@ router.post('/', [
         } = req.body;
 
         // 1. Buscar el usuario asignado por username para obtener su ID
-        const { data: user, error: userError } = await supabase
-            .from('users')
+        const { data: user, error: userError } = await supabase.from('users')
             .select('id')
             .eq('username', usernameAsignado)
             .limit(1)
@@ -58,8 +57,7 @@ router.post('/', [
             return res.status(404).json({ success: false, message: 'Usuario asignado no encontrado' });
         }
     
-        const { data: tareaData, error: tareaError } = await supabase
-            .from('tareas')
+        const { data: tareaData, error: tareaError } = await supabase.from('tareas')
             .insert([
                 {
                     titulo: titulo,
@@ -83,8 +81,7 @@ router.post('/', [
         const tareaCreada = tareaData[0];
 
         // 3. Crear la asignación en la tabla asignaciones
-        const { data: asignacionData, error: asignacionError } = await supabase
-            .from('asignaciones')
+        const { data: asignacionData, error: asignacionError } = await supabase.from('asignaciones')
             .insert([
                 {
                     id_user: user.id,
@@ -97,8 +94,7 @@ router.post('/', [
         if (asignacionError) {
             console.error('Error al crear asignación:', asignacionError);
             // Si falla la asignación, eliminamos la tarea para mantener consistencia
-            await supabase
-                .from('tareas')
+            await supabase.from('tareas')
                 .delete()
                 .eq('id', tareaCreada.id);
             
@@ -154,8 +150,7 @@ router.get('/createdByUser/:username', async (req, res) => {
         }
 
         // 1. Buscar el usuario por username para obtener su ID (Necesario para la respuesta, aunque no para la consulta de tareas)
-        const { data: user, error: userError } = await supabase
-            .from('users')
+        const { data: user, error: userError } = await supabase.from('users')
             .select('id')
             .eq('username', username)
             .limit(1)
@@ -171,8 +166,7 @@ router.get('/createdByUser/:username', async (req, res) => {
         }
 
         // 2. Buscar tareas creadas por este usuario (usando 'asignado_por')
-        const { data: tareas, error: tareasError } = await supabase
-            .from('tareas')
+        const { data: tareas, error: tareasError } = await supabase.from('tareas')
             .select('*') // Selecciona todos los campos, incluyendo 'descripcion'
             .eq('asignadoPor', username)
             .order('fechaCreacion', { ascending: false });
@@ -226,8 +220,7 @@ router.get('/assignedToUser/:username', async (req, res) => {
         }
 
         // 1. Buscar el usuario por username para obtener su ID
-        const { data: user, error: userError } = await supabase
-            .from('users')
+        const { data: user, error: userError } = await supabase.from('users')
             .select('id')
             .eq('username', username)
             .limit(1)
@@ -244,8 +237,7 @@ router.get('/assignedToUser/:username', async (req, res) => {
 
         // 2. Buscar asignaciones para este usuario y hacer JOIN con la tabla 'tareas'
         // El select usa la notación `tasks (*)` para traer todos los campos de la tabla tareas.
-        const { data: asignaciones, error: asignacionesError } = await supabase
-            .from('asignaciones')
+        const { data: asignaciones, error: asignacionesError } = await supabase.from('asignaciones')
             .select(`
                 *,
                 tareas (*)
@@ -313,8 +305,7 @@ router.patch('/priority/:idTarea', [
         
 
         // 1. Buscar el ID del usuario
-        const { data: user, error: userError } = await supabase
-            .from('users')
+        const { data: user, error: userError } = await supabase.from('users')
             .select('id')
             .eq('username', username)
             .limit(1)
@@ -332,8 +323,7 @@ router.patch('/priority/:idTarea', [
         const userId = user.id;
 
         // 2. Buscar la asignación actual para obtener el valor de esPrioridad
-        const { data: currentAsignacion, error: fetchError } = await supabase
-            .from('asignaciones')
+        const { data: currentAsignacion, error: fetchError } = await supabase.from('asignaciones')
             .select('esPrioridad')
             .eq('id_tarea', idTarea)
             .eq('id_user', userId)
@@ -355,8 +345,7 @@ router.patch('/priority/:idTarea', [
         const nuevaPrioridad = !currentAsignacion.es_prioridad;
         
         // 4. Actualizar el campo 'esPrioridad' en la tabla 'asignaciones'
-        const { data: updatedAsignacion, error: updateError } = await supabase
-            .from('asignaciones')
+        const { data: updatedAsignacion, error: updateError } = await supabase.from('asignaciones')
             .update({ esPrioridad: nuevaPrioridad }) // Usamos snake_case para la DB
             .eq('id_tarea', idTarea)
             .eq('id_user', userId)
@@ -407,8 +396,7 @@ router.patch('/note/:id', [
             ultimaActualizacion: new Date().toISOString()
         };
 
-        const { data: updatedTarea, error: updateError } = await supabase
-            .from('tareas')
+        const { data: updatedTarea, error: updateError } = await supabase.from('tareas')
             .update(updateData)
             .eq('id', id)
             .select();
@@ -460,8 +448,7 @@ router.patch('/status/:id', [
             ultimaActualizacion: new Date().toISOString()
         };
 
-        const { data: updatedTarea, error: updateError } = await supabase
-            .from('tareas')
+        const { data: updatedTarea, error: updateError } = await supabase.from('tareas')
             .update(updateData)
             .eq('id', id)
             .select();
@@ -508,8 +495,7 @@ router.get('/priority/:username', [
         const { username } = req.params;
 
         // 1. Buscar el ID del usuario
-        const { data: user, error: userError } = await supabase
-            .from('users')
+        const { data: user, error: userError } = await supabase.from('users')
             .select('id')
             .eq('username', username)
             .limit(1)
@@ -527,8 +513,7 @@ router.get('/priority/:username', [
         const userId = user.id;
 
         // 2. Buscar en 'asignaciones' donde es_prioridad es TRUE Y id_user coincide, y hacer JOIN con 'tareas'
-        const { data: asignaciones, error: asignacionesError } = await supabase
-            .from('asignaciones')
+        const { data: asignaciones, error: asignacionesError } = await supabase.from('asignaciones')
             .select(`
                 esPrioridad,
                 tareas (*)
@@ -573,4 +558,4 @@ router.get('/priority/:username', [
     }
 });
 
-module.exports = router;
+export default router;
