@@ -38,14 +38,14 @@ app.use((req, res) => {
 });
 
 
-if (process.env.NODE_ENV !== 'production') {
+//if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`Servidor corriendo en puerto ${PORT}`);
     console.log(`Health check: http://localhost:${PORT}/api/health`);
   });
-}
+//}
 // Iniciar servidor
 
 
 // Para Vercel: exportar la app como función
-export default serverless(app);
+//export default serverless(app);
