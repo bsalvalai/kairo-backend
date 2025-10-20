@@ -344,7 +344,7 @@ router.patch('/priority/:idTarea', [
         
         // 4. Actualizar el campo 'esPrioridad' en la tabla 'asignaciones'
         const { data: updatedAsignacion, error: updateError } = await supabase.from('asignaciones')
-            .update({ esPrioridad: nuevaPrioridad }) // Usamos snake_case para la DB
+            .update({ esPrioridad: nuevaPrioridad })
             .eq('id_tarea', idTarea)
             .eq('id_user', userId)
             .select();
@@ -362,6 +362,7 @@ router.patch('/priority/:idTarea', [
         res.json({
             success: true,
             message: `Prioridad de tarea ${idTarea} actualizada a ${nuevaPrioridad} para el usuario ${username}`,
+            current: nuevaPrioridad,
             asignacionActualizada: {
                 id: asignacion.id,
                 idUser: asignacion.id_user,
@@ -513,7 +514,7 @@ router.get('/priority/:username', [
         // 2. Buscar en 'asignaciones' donde esPrioridad es TRUE Y id_user coincide, y hacer JOIN con 'tareas'
         const { data: asignaciones, error: asignacionesError } = await supabase.from('asignaciones')
             .select(`
-                esPrioridad,
+                *,
                 tareas (*)
             `)
             .eq('id_user', userId) // <-- FILTRO POR USUARIO ESPECÍFICO
@@ -524,30 +525,37 @@ router.get('/priority/:username', [
             console.error('Error al buscar tareas prioritarias del usuario:', asignacionesError);
             return res.status(500).json({ success: false, message: 'Error al buscar las tareas prioritarias del usuario' });
         }
-
-        // 3. Formatear la respuesta extrayendo los datos de la tarea
-        const tareasPrioritarias = asignaciones.map(asignacion => ({
-            id: asignacion.tareas.id,
-            titulo: asignacion.tareas.titulo,
-            descripcion: asignacion.tareas.descripcion,
-            prioridad: asignacion.tareas.prioridad,
-            fechaCreacion: asignacion.tareas.fechaCreacion,
-            fechaVencimiento: asignacion.tareas.fechaVencimiento,
-            estado: asignacion.tareas.estado,
-            asignadoPor: asignacion.tareas.asignadoPor,
-            nota: asignacion.tareas.nota,
-            esPrioridad: asignacion.esPrioridad, 
-            ultimaActualizacion: asignacion.tareas.ultimaActualizacion
+        // 3. Formatear la respuesta
+        const tareasAsignadas = asignaciones.map(asignacion => ({
+            asignacion: {
+                id: asignacion.id,
+                idUser: asignacion.id_user,
+                idTarea: asignacion.id_tarea,
+                esPrioridad: asignacion.esPrioridad
+            },
+            tarea: {
+                id: asignacion.tareas.id,
+                titulo: asignacion.tareas.titulo,
+                descripcion: asignacion.tareas.descripcion, 
+                prioridad: asignacion.tareas.prioridad,
+                fechaCreacion: asignacion.tareas.fechaCreacion,
+                fechaVencimiento: asignacion.tareas.fechaVencimiento,
+                estado: asignacion.tareas.estado,
+                asignadoPor: asignacion.tareas.asignadoPor,
+                nota: asignacion.tareas.nota,
+                ultimaActualizacion: asignacion.tareas.ultimaActualizacion
+            }
         }));
 
         res.json({
             success: true,
-            message: `Total de ${tareasPrioritarias.length} tareas marcadas como prioritarias por el usuario ${username}.`,
+            message: `Tareas asignadas a ${username}`,
             usuario: {
                 username: username,
-                id: userId
+                id: user.id
             },
-            tareasPrioritarias: tareasPrioritarias,
+            tareasAsignadas: tareasAsignadas,
+            totalTareas: tareasAsignadas.length
         });
 
     } catch (error) {
@@ -555,5 +563,262 @@ router.get('/priority/:username', [
         res.status(500).json({ success: false, message: 'Error interno del servidor' });
     }
 });
+
+//Actualizar todos los campos de una tarea
+router.put('/:taskId', [
+    body('titulo').optional().notEmpty().withMessage('El título no puede estar vacío'),
+    body('usernameAsignado').optional().notEmpty().withMessage('El nombre del usuario asignado no puede estar vacío'),
+    body('prioridad').optional().isIn(['alta', 'media', 'baja']).withMessage('La prioridad debe ser: alta, media o baja'),
+    body('fechaVencimiento').optional().isISO8601().withMessage('La fecha de vencimiento debe ser una fecha válida'),
+    body('estado').optional().isIn(['pendiente', 'en progreso', 'completada']).withMessage('El estado debe ser: pendiente, en progreso o completada.'),
+    body('asignadoPor').optional().isString().withMessage('El campo asignadoPor debe ser texto'),
+    body('nota').optional().isString().withMessage('El campo nota debe ser texto'),
+    body('esPrioridad').optional().isBoolean().withMessage('El campo esPrioridad debe ser booleano')
+  ], async (req, res) => {
+    try {
+      const { taskId } = req.params;
+      const { titulo, usernameAsignado, prioridad, fechaVencimiento, estado, asignadoPor, nota, esPrioridad } = req.body;
+  
+      // Validar datos de entrada
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Datos de entrada inválidos',
+          errors: errors.array()
+        });
+      }
+  
+      if (!taskId) {
+        return res.status(400).json({
+          success: false,
+          message: 'El ID de la tarea es requerido'
+        });
+      }
+  
+      // Verificar que la tarea existe
+      const { data: tareaExistente, error: checkError } = await supabase
+        .from('tareas')
+        .select('*')
+        .eq('id', taskId)
+        .limit(1)
+        .maybeSingle();
+  
+      if (checkError) {
+        console.error('Error al verificar tarea:', checkError);
+        return res.status(500).json({
+          success: false,
+          message: 'Error al verificar la tarea'
+        });
+      }
+  
+      if (!tareaExistente) {
+        return res.status(404).json({
+          success: false,
+          message: 'Tarea no encontrada'
+        });
+      }
+  
+      // Preparar los datos a actualizar
+      const datosActualizacion = {
+        ultimaActualizacion: new Date().toISOString()
+      };
+  
+      // Solo actualizar campos que se proporcionaron
+      if (titulo !== undefined) datosActualizacion.titulo = titulo;
+      if (prioridad !== undefined) datosActualizacion.prioridad = prioridad;
+      if (fechaVencimiento !== undefined) {
+        datosActualizacion.fechaVencimiento = fechaVencimiento ? new Date(fechaVencimiento).toISOString() : null;
+      }
+      if (estado !== undefined) datosActualizacion.estado = estado;
+      if (asignadoPor !== undefined) datosActualizacion.asignadoPor = asignadoPor;
+      if (nota !== undefined) datosActualizacion.nota = nota;
+  
+      // Actualizar la tarea
+      const { data: tareaActualizada, error: updateError } = await supabase
+        .from('tareas')
+        .update(datosActualizacion)
+        .eq('id', taskId)
+        .select();
+  
+      if (updateError) {
+        console.error('Error al actualizar tarea:', updateError);
+        return res.status(500).json({
+          success: false,
+          message: 'Error al actualizar la tarea'
+        });
+      }
+  
+      let respuesta = {
+        success: true,
+        message: 'Tarea actualizada exitosamente',
+        tarea: {
+          id: tareaActualizada[0].id,
+          titulo: tareaActualizada[0].titulo,
+          prioridad: tareaActualizada[0].prioridad,
+          fechaCreacion: tareaActualizada[0].fechaCreacion,
+          fechaVencimiento: tareaActualizada[0].fechaVencimiento,
+          estado: tareaActualizada[0].estado,
+          asignadoPor: tareaActualizada[0].asignadoPor,
+          nota: tareaActualizada[0].nota,
+          ultimaActualizacion: tareaActualizada[0].ultimaActualizacion
+        }
+      };
+  
+      // Si se proporcionó un nuevo usuario asignado, actualizar la asignación
+      if (usernameAsignado !== undefined) {
+        // Buscar el usuario asignado por username para obtener su ID
+        const { data: user, error: userError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('username', usernameAsignado)
+          .limit(1)
+          .maybeSingle();
+  
+        if (userError) {
+          console.error('Error al buscar usuario:', userError);
+          return res.status(500).json({
+            success: false,
+            message: 'Error al buscar el usuario asignado'
+          });
+        }
+  
+        if (!user) {
+          return res.status(404).json({
+            success: false,
+            message: 'Usuario asignado no encontrado'
+          });
+        }
+  
+        // Buscar la asignación existente
+        const { data: asignacionExistente, error: asignacionError } = await supabase
+          .from('asignaciones')
+          .select('*')
+          .eq('id_tarea', taskId)
+          .limit(1)
+          .maybeSingle();
+  
+        if (asignacionError) {
+          console.error('Error al buscar asignación:', asignacionError);
+          return res.status(500).json({
+            success: false,
+            message: 'Error al buscar la asignación existente'
+          });
+        }
+  
+        if (asignacionExistente) {
+          // Actualizar la asignación existente
+          const datosAsignacion = {
+            id_user: user.id
+          };
+  
+          if (esPrioridad !== undefined) {
+            datosAsignacion.esPrioridad = esPrioridad;
+          }
+  
+          const { data: asignacionActualizada, error: updateAsignacionError } = await supabase
+            .from('asignaciones')
+            .update(datosAsignacion)
+            .eq('id', asignacionExistente.id)
+            .select();
+  
+          if (updateAsignacionError) {
+            console.error('Error al actualizar asignación:', updateAsignacionError);
+            return res.status(500).json({
+              success: false,
+              message: 'Error al actualizar la asignación'
+            });
+          }
+  
+          respuesta.asignacion = {
+            id: asignacionActualizada[0].id,
+            idUser: asignacionActualizada[0].id_user,
+            idTarea: asignacionActualizada[0].id_tarea,
+            esPrioridad: asignacionActualizada[0].esPrioridad
+          };
+        } else {
+          // Crear nueva asignación si no existe
+          const { data: nuevaAsignacion, error: createAsignacionError } = await supabase
+            .from('asignaciones')
+            .insert([
+              {
+                id_user: user.id,
+                id_tarea: taskId,
+                esPrioridad: esPrioridad || false
+              }
+            ])
+            .select();
+  
+          if (createAsignacionError) {
+            console.error('Error al crear asignación:', createAsignacionError);
+            return res.status(500).json({
+              success: false,
+              message: 'Error al crear la asignación'
+            });
+          }
+  
+          respuesta.asignacion = {
+            id: nuevaAsignacion[0].id,
+            idUser: nuevaAsignacion[0].id_user,
+            idTarea: nuevaAsignacion[0].id_tarea,
+            esPrioridad: nuevaAsignacion[0].esPrioridad
+          };
+        }
+  
+        respuesta.usuarioAsignado = {
+          username: usernameAsignado,
+          id: user.id
+        };
+      } else if (esPrioridad !== undefined) {
+        // Si solo se actualiza la prioridad sin cambiar el usuario
+        const { data: asignacionExistente, error: asignacionError } = await supabase
+          .from('asignaciones')
+          .select('*')
+          .eq('id_tarea', taskId)
+          .limit(1)
+          .maybeSingle();
+  
+        if (asignacionError) {
+          console.error('Error al buscar asignación:', asignacionError);
+          return res.status(500).json({
+            success: false,
+            message: 'Error al buscar la asignación existente'
+          });
+        }
+  
+        if (asignacionExistente) {
+          const { data: asignacionActualizada, error: updateAsignacionError } = await supabase
+            .from('asignaciones')
+            .update({ esPrioridad: esPrioridad })
+            .eq('id', asignacionExistente.id)
+            .select();
+  
+          if (updateAsignacionError) {
+            console.error('Error al actualizar asignación:', updateAsignacionError);
+            return res.status(500).json({
+              success: false,
+              message: 'Error al actualizar la prioridad de la asignación'
+            });
+          }
+  
+          respuesta.asignacion = {
+            id: asignacionActualizada[0].id,
+            idUser: asignacionActualizada[0].id_user,
+            idTarea: asignacionActualizada[0].id_tarea,
+            esPrioridad: asignacionActualizada[0].esPrioridad
+          };
+        }
+      }
+  
+      res.json(respuesta);
+  
+    } catch (error) {
+      console.error('Error en actualización de tarea:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  });
 
 export default router;

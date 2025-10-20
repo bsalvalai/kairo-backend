@@ -229,22 +229,24 @@ router.post('/login', [
         {
             //id
             titulo: "Propuesta técnica y estimación — e-commerce Grupo Andina",
+            descripcion: "Documento de alcance y estimación inicial del e-commerce.",
             prioridad: "alta",
             fechaCreacion: new Date().toISOString(),
             fechaVencimiento: "2025-10-12T23:59:59.000Z",
             estado: "pendiente",
-            asignadoPor: "Mateo Latigano",
+            asignadoPor: "Joaquin Fernandez",
             nota: "",
             ultimaActualizacion: new Date().toISOString(),
         },
         {
           //id
           titulo: "Plan de UAT — app logística LogiTrans",
+          descripcion: "Casos de prueba y criterios de aceptación para UAT.",
           prioridad: "media",
           fechaCreacion: new Date().toISOString(),
           fechaVencimiento: "2025-10-15T23:59:59.000Z",
           estado: "pendiente",
-          asignadoPor: "Mateo Latigano",
+          asignadoPor: "Valentina Olivares",
           nota: "",
           ultimaActualizacion: new Date().toISOString(),
         },
@@ -253,6 +255,7 @@ router.post('/login', [
         {
           //id
           titulo: "Integración de pagos (MP) — RetailFit, checkout unificado",
+          descripcion: "Configurar y probar pagos con Mercado Pago en checkout.",
           prioridad: "alta",
           fechaCreacion: new Date().toISOString(),
           fechaVencimiento: "2025-10-10T23:59:59.000Z",
@@ -264,11 +267,12 @@ router.post('/login', [
         {
           //id
           titulo: "Tablero PMO de KPIs por proyecto (Flowbit interno)",
+          descripcion: "Diseñar tablero inicial con KPIs y fuentes de datos.",
           prioridad: "media",
           fechaCreacion: new Date().toISOString(),
           fechaVencimiento: "2025-10-12T23:59:59.000Z",
           estado: "en progreso",
-          asignadoPor: "Mateo Latigano",
+          asignadoPor: "Joaquin Fernandez",
           nota: "",
           ultimaActualizacion: new Date().toISOString(),
         },
@@ -277,17 +281,19 @@ router.post('/login', [
         {
           //id
           titulo: "Kickoff CRM SaludPlus — acta y plan de comunicaciones",
+          descripcion: "Acta de kickoff y plan de comunicaciones del proyecto.",
           prioridad: "baja",
           fechaCreacion: new Date().toISOString(),
           fechaVencimiento: "2025-10-05T23:59:59.000Z",
           estado: "completada",
-          asignadoPor: "Mateo Latigano",
+          asignadoPor: "Valentina Olivares",
           nota: "",
           ultimaActualizacion: new Date().toISOString(),
         },
         {
           //id
           titulo: "Entrega Sprint 4 AgroData — demo y retro con cliente",
+          descripcion: "Demo entregada, feedback registrado y retro cerrada.",
           prioridad: "media",
           fechaCreacion: new Date().toISOString(),
           fechaVencimiento: "2025-10-06T23:59:59.000Z",
