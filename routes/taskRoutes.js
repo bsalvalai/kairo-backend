@@ -1,11 +1,9 @@
 import { Router } from 'express';
 import { body, validationResult, param } from 'express-validator';
-import { createClient } from '@supabase/supabase-js';
-// Importamos la función de conexión a Supabase y la clase Router
+import supabase from '../supabaseClient.js';
 
 const router = Router();
 
-import supabase from '../supabaseClient.js';
 
 // ----------------------------------------------------------------
 // POST /
@@ -112,18 +110,18 @@ router.post('/', [
                 titulo: tareaCreada.titulo,
                 descripcion: tareaCreada.descripcion, // <- Incluido en la respuesta
                 prioridad: tareaCreada.prioridad,
-                fechaCreacion: tareaCreada.fecha_creacion,
-                fechaVencimiento: tareaCreada.fecha_vencimiento,
+                fechaCreacion: tareaCreada.fechaCreacion,
+                fechaVencimiento: tareaCreada.fechaVencimiento,
                 estado: tareaCreada.estado,
-                asignadoPor: tareaCreada.asignado_por,
+                asignadoPor: tareaCreada.asignadoPor,
                 nota: tareaCreada.nota,
-                ultimaActualizacion: tareaCreada.ultima_actualizacion
+                ultimaActualizacion: tareaCreada.ultimaActualizacion
             },
             asignacion: {
                 id: asignacionCreada.id,
                 idUser: asignacionCreada.id_user,
                 idTarea: asignacionCreada.id_tarea,
-                esPrioridad: asignacionCreada.es_prioridad
+                esPrioridad: asignacionCreada.esPrioridad
             },
             usuarioAsignado: {
                 username: usernameAsignado,
@@ -165,7 +163,7 @@ router.get('/createdByUser/:username', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
         }
 
-        // 2. Buscar tareas creadas por este usuario (usando 'asignado_por')
+        // 2. Buscar tareas creadas por este usuario (usando 'asignadoPor')
         const { data: tareas, error: tareasError } = await supabase.from('tareas')
             .select('*') // Selecciona todos los campos, incluyendo 'descripcion'
             .eq('asignadoPor', username)
@@ -189,12 +187,12 @@ router.get('/createdByUser/:username', async (req, res) => {
                 titulo: tarea.titulo,
                 descripcion: tarea.descripcion, // <- Añadido el campo 'descripcion'
                 prioridad: tarea.prioridad,
-                fechaCreacion: tarea.fecha_creacion,
-                fechaVencimiento: tarea.fecha_vencimiento,
+                fechaCreacion: tarea.fechaCreacion,
+                fechaVencimiento: tarea.fechaVencimiento,
                 estado: tarea.estado,
-                asignadoPor: tarea.asignado_por,
+                asignadoPor: tarea.asignadoPor,
                 nota: tarea.nota,
-                ultimaActualizacion: tarea.ultima_actualizacion
+                ultimaActualizacion: tarea.ultimaActualizacion
             })),
             totalTareas: tareas.length
         });
@@ -256,19 +254,19 @@ router.get('/assignedToUser/:username', async (req, res) => {
                 id: asignacion.id,
                 idUser: asignacion.id_user,
                 idTarea: asignacion.id_tarea,
-                esPrioridad: asignacion.es_prioridad
+                esPrioridad: asignacion.esPrioridad
             },
             tarea: {
                 id: asignacion.tareas.id,
                 titulo: asignacion.tareas.titulo,
                 descripcion: asignacion.tareas.descripcion, 
                 prioridad: asignacion.tareas.prioridad,
-                fechaCreacion: asignacion.tareas.fecha_creacion,
-                fechaVencimiento: asignacion.tareas.fecha_vencimiento,
+                fechaCreacion: asignacion.tareas.fechaCreacion,
+                fechaVencimiento: asignacion.tareas.fechaVencimiento,
                 estado: asignacion.tareas.estado,
-                asignadoPor: asignacion.tareas.asignado_por,
+                asignadoPor: asignacion.tareas.asignadoPor,
                 nota: asignacion.tareas.nota,
-                ultimaActualizacion: asignacion.tareas.ultima_actualizacion
+                ultimaActualizacion: asignacion.tareas.ultimaActualizacion
             }
         }));
 
@@ -317,7 +315,7 @@ router.patch('/priority/:idTarea', [
         }
 
         if (!user) {
-            return res.status(404).json({ success: false, message: '{username}' });
+            return res.status(500).json({ success: false, message: `Error al buscar el usuario, no se encontró: ${username}` });
         }
 
         const userId = user.id;
@@ -342,7 +340,7 @@ router.patch('/priority/:idTarea', [
         }
 
         // 3. Invertir el valor de esPrioridad
-        const nuevaPrioridad = !currentAsignacion.es_prioridad;
+        const nuevaPrioridad = !currentAsignacion.esPrioridad;
         
         // 4. Actualizar el campo 'esPrioridad' en la tabla 'asignaciones'
         const { data: updatedAsignacion, error: updateError } = await supabase.from('asignaciones')
@@ -368,7 +366,7 @@ router.patch('/priority/:idTarea', [
                 id: asignacion.id,
                 idUser: asignacion.id_user,
                 idTarea: asignacion.id_tarea,
-                esPrioridad: asignacion.es_prioridad
+                esPrioridad: asignacion.esPrioridad
             }
         });
 
@@ -420,7 +418,7 @@ router.patch('/note/:id', [
                 id: updatedTarea[0].id,
                 titulo: updatedTarea[0].titulo,
                 nota: updatedTarea[0].nota,
-                ultimaActualizacion: updatedTarea[0].ultima_actualizacion
+                ultimaActualizacion: updatedTarea[0].ultimaActualizacion
             }
         });
 
@@ -435,7 +433,7 @@ router.patch('/note/:id', [
 // ----------------------------------------------------------------
 router.patch('/status/:id', [
     param('id').isInt().withMessage('El ID de la tarea debe ser un número entero'),
-    body('estado').notEmpty().isIn(['pendiente', 'en_progreso', 'completada', 'cancelada']).withMessage('El estado debe ser: pendiente, en_progreso, completada o cancelada')
+    body('estado').notEmpty().isIn(['pendiente', 'en progreso', 'completada']).withMessage('El estado debe ser: pendiente, en progreso o completada')
 ], async (req, res) => {
     try {
         if (!supabase) return res.status(500).json({ success: false, message: 'Fallo al inicializar Supabase' });
@@ -472,7 +470,7 @@ router.patch('/status/:id', [
                 id: updatedTarea[0].id,
                 titulo: updatedTarea[0].titulo,
                 estado: updatedTarea[0].estado,
-                ultimaActualizacion: updatedTarea[0].ultima_actualizacion
+                ultimaActualizacion: updatedTarea[0].ultimaActualizacion
             }
         });
 
@@ -512,7 +510,7 @@ router.get('/priority/:username', [
 
         const userId = user.id;
 
-        // 2. Buscar en 'asignaciones' donde es_prioridad es TRUE Y id_user coincide, y hacer JOIN con 'tareas'
+        // 2. Buscar en 'asignaciones' donde esPrioridad es TRUE Y id_user coincide, y hacer JOIN con 'tareas'
         const { data: asignaciones, error: asignacionesError } = await supabase.from('asignaciones')
             .select(`
                 esPrioridad,
@@ -533,13 +531,13 @@ router.get('/priority/:username', [
             titulo: asignacion.tareas.titulo,
             descripcion: asignacion.tareas.descripcion,
             prioridad: asignacion.tareas.prioridad,
-            fechaCreacion: asignacion.tareas.fecha_creacion,
-            fechaVencimiento: asignacion.tareas.fecha_vencimiento,
+            fechaCreacion: asignacion.tareas.fechaCreacion,
+            fechaVencimiento: asignacion.tareas.fechaVencimiento,
             estado: asignacion.tareas.estado,
-            asignadoPor: asignacion.tareas.asignado_por,
+            asignadoPor: asignacion.tareas.asignadoPor,
             nota: asignacion.tareas.nota,
-            esPrioridad: asignacion.es_prioridad, 
-            ultimaActualizacion: asignacion.tareas.ultima_actualizacion
+            esPrioridad: asignacion.esPrioridad, 
+            ultimaActualizacion: asignacion.tareas.ultimaActualizacion
         }));
 
         res.json({

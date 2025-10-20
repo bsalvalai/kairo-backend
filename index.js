@@ -1,14 +1,8 @@
 import 'dotenv/config';
 import express, { json } from 'express';
 import cors from 'cors';
-import { createClient } from '@supabase/supabase-js';
-import bcrypt from 'bcryptjs';
-import { body, validationResult } from 'express-validator';
 import userRoutes from './routes/userRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
-import __dirname from "./utils.js"
-
-import serverless from 'serverless-http';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -37,15 +31,7 @@ app.use((req, res) => {
   });
 });
 
-
-//if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`Servidor corriendo en puerto ${PORT}`);
     console.log(`Health check: http://localhost:${PORT}/api/health`);
   });
-//}
-// Iniciar servidor
-
-
-// Para Vercel: exportar la app como función
-//export default serverless(app);
