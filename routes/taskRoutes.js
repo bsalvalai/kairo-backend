@@ -302,21 +302,21 @@ router.patch('/priority/:idTarea', [
         const { username } = req.body;
         
 
-        // 1. Buscar el ID del usuario
-        const { data: user, error: userError } = await supabase.from('users')
-            .select('id')
-            .eq('username', username)
-            .limit(1)
-            .maybeSingle();
+         //1. Buscar el ID del usuario
+         const { data: user, error: userError } = await supabase.from('users')
+             .select('id')
+             .eq('username', username)
+             .limit(1)
+             .maybeSingle();
 
-        if (userError) {
-            console.error('Error al buscar usuario:', userError);
-            return res.status(500).json({ success: false, message: 'Error al buscar el usuario' });
-        }
+         if (userError) {
+             console.error('Error al buscar usuario:', userError);
+             return res.status(500).json({ success: false, message: 'Error al buscar el usuario' });
+         }
 
-        if (!user) {
-            return res.status(500).json({ success: false, message: `Error al buscar el usuario, no se encontró: ${username}` });
-        }
+         if (!user) {
+             return res.status(500).json({ success: false, message: `Error al buscar el usuario, no se encontró: ${username}` });
+         }
 
         const userId = user.id;
 
@@ -324,8 +324,9 @@ router.patch('/priority/:idTarea', [
         const { data: currentAsignacion, error: fetchError } = await supabase.from('asignaciones')
             .select('esPrioridad')
             .eq('id_tarea', idTarea)
-            .eq('id_user', userId)
-            .single(); // Usamos single para esperar una sola fila o null
+            .eq("id_user", userId)
+            .limit(1)
+            .maybeSingle(); // Usamos single para esperar una sola fila o null
 
         if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 es "No rows found"
             console.error('Error al obtener la asignación actual:', fetchError);
@@ -346,8 +347,9 @@ router.patch('/priority/:idTarea', [
         const { data: updatedAsignacion, error: updateError } = await supabase.from('asignaciones')
             .update({ esPrioridad: nuevaPrioridad })
             .eq('id_tarea', idTarea)
-            .eq('id_user', userId)
-            .select();
+            .select()
+            .limit(1)
+            .maybeSingle();
         
         if (updateError) {
             console.error('Error al actualizar la prioridad:', updateError);
@@ -357,11 +359,11 @@ router.patch('/priority/:idTarea', [
         // La verificación de updatedAsignacion.length ya no es necesaria aquí porque ya chequeamos antes.
 
         // 5. Respuesta exitosa
-        const asignacion = updatedAsignacion[0];
+        const asignacion = updatedAsignacion;
 
         res.json({
             success: true,
-            message: `Prioridad de tarea ${idTarea} actualizada a ${nuevaPrioridad} para el usuario ${username}`,
+            message: `Prioridad de tarea ${idTarea} actualizada a ${nuevaPrioridad} para el usuario`,
             current: nuevaPrioridad,
             asignacionActualizada: {
                 id: asignacion.id,
