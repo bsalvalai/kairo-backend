@@ -381,7 +381,8 @@ router.post('/login', [
                 estado: tarea.estado,
                 asignadoPor: tarea.asignadoPor,
                 nota: tarea.nota,
-                ultimaActualizacion: tarea.ultimaActualizacion
+                ultimaActualizacion: tarea.ultimaActualizacion,
+                descripcion: tarea.descripcion
               }
             ])
             .select();
