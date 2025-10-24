@@ -3,6 +3,7 @@ import express, { json } from 'express';
 import cors from 'cors';
 import userRoutes from './routes/userRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
+import reportsRoutes from './routes/reportsRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,12 +14,13 @@ app.use(json());
 
 app.use('/api', userRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/reports', reportsRoutes)
 
 // Endpoint de prueba
 app.get('/api/health', async (req, res) => {
   res.json({
     success: true,
-    message: 'Servidor funcionando correctamente - SPRINT 4',
+    message: 'Servidor funcionando correctamente - SPRINT 5',
     timestamp: new Date().toISOString(),
   });
 });
