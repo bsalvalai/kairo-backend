@@ -441,8 +441,8 @@ router.post('/login', [
         });
       }
   
-      // Si el usuario no tiene asignaciones o tiene menos de 6, crear las tareas predefinidas
-      if (!asignacionesExistentes || asignacionesExistentes.length < 6) {
+      // Si el usuario no tiene asignaciones o tiene menos de 11, crear las tareas predefinidas
+      if (!asignacionesExistentes || asignacionesExistentes.length < 11) {
         
         // Array para almacenar los IDs de las tareas creadas
         const tareasCreadas = [];
