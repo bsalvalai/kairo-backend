@@ -223,20 +223,20 @@ router.post('/login', [
 
         //UPDATE v2.0.0: Se deberá verificar si el usuario tiene las 6 tareas predefinidas, si no, crearlas.
 
-    //modelo de tarea predefinida
-    const tareasPredefinidas = [
-        //Pendientes
+      //modelo de tarea predefinida
+      const tareasPredefinidas = [
+        // --- ORIGINALES ---
         {
-            //id
-            titulo: "Propuesta técnica y estimación — e-commerce Grupo Andina",
-            descripcion: "Documento de alcance y estimación inicial del e-commerce.",
-            prioridad: "alta",
-            fechaCreacion: new Date().toISOString(),
-            fechaVencimiento: "2025-10-12T23:59:59.000Z",
-            estado: "pendiente",
-            asignadoPor: "Joaquin Fernandez",
-            nota: "",
-            ultimaActualizacion: new Date().toISOString(),
+          //id
+          titulo: "Propuesta técnica y estimación — e-commerce Grupo Andina",
+          descripcion: "Documento de alcance y estimación inicial del e-commerce.",
+          prioridad: "alta",
+          fechaCreacion: new Date().toISOString(),
+          fechaVencimiento: "2025-10-12T23:59:59.000Z",
+          estado: "pendiente",
+          asignadoPor: "Joaquin Fernandez",
+          nota: "",
+          ultimaActualizacion: new Date().toISOString(),
         },
         {
           //id
@@ -250,8 +250,6 @@ router.post('/login', [
           nota: "",
           ultimaActualizacion: new Date().toISOString(),
         },
-  
-        //En progreso
         {
           //id
           titulo: "Integración de pagos (MP) — RetailFit, checkout unificado",
@@ -276,8 +274,6 @@ router.post('/login', [
           nota: "",
           ultimaActualizacion: new Date().toISOString(),
         },
-  
-        //Completadas
         {
           //id
           titulo: "Kickoff CRM SaludPlus — acta y plan de comunicaciones",
@@ -302,46 +298,132 @@ router.post('/login', [
           nota: "",
           ultimaActualizacion: new Date().toISOString(),
         },
+      
+        // --- NUEVAS (Histórico de Vencimientos - Flowbit) ---
+        {
+          // id
+          titulo: "Migración de base de datos legacy a Firebase",
+          descripcion: "Migrar los datos de usuarios y proyectos del sistema anterior hacia Firebase con validación de integridad y backup previo.",
+          prioridad: "alta",
+          fechaCreacion: "2025-09-15T00:00:00.000Z",
+          fechaVencimiento: "2025-09-28T23:59:59.000Z",
+          estado: "pendiente",
+          asignadoPor: "usuario_actual",
+          nota: "",
+          ultimaActualizacion: new Date().toISOString(),
+        },
+        {
+          // id
+          titulo: "Documentación técnica del módulo de reportes",
+          descripcion: "Redactar guía técnica para desarrolladores sobre endpoints y flujos de datos de los reportes.",
+          prioridad: "media",
+          fechaCreacion: "2025-09-20T00:00:00.000Z",
+          fechaVencimiento: "2025-09-26T23:59:59.000Z",
+          estado: "completada fuera de tiempo",
+          asignadoPor: "usuario_actual",
+          nota: "",
+          ultimaActualizacion: new Date().toISOString(),
+        },
+        {
+          // id
+          titulo: "Ajustes de seguridad en autenticación OAuth",
+          descripcion: "Revisar configuración de OAuth 2.0, actualización de refresh tokens y validación de expiración.",
+          prioridad: "alta",
+          fechaCreacion: "2025-09-19T00:00:00.000Z",
+          fechaVencimiento: "2025-09-25T23:59:59.000Z",
+          estado: "pendiente",
+          asignadoPor: "usuario_actual",
+          nota: "",
+          ultimaActualizacion: new Date().toISOString(),
+        },
+        {
+          // id
+          titulo: "Diseño de interfaz para control de prioridades personales",
+          descripcion: "Prototipar vista en Figma con ícono de estrella, animación de interacción y leyenda informativa.",
+          prioridad: "baja",
+          fechaCreacion: "2025-09-10T00:00:00.000Z",
+          fechaVencimiento: "2025-09-20T23:59:59.000Z",
+          estado: "completada fuera de tiempo",
+          asignadoPor: "usuario_actual",
+          nota: "",
+          ultimaActualizacion: new Date().toISOString(),
+        },
+        {
+          // id
+          titulo: "Revisión de logs del backend tras integración del tablero",
+          descripcion: "Revisar errores 500 detectados en logs tras pruebas de integración; documentar y asignar responsables.",
+          prioridad: "media",
+          fechaCreacion: "2025-09-22T00:00:00.000Z",
+          fechaVencimiento: "2025-09-27T23:59:59.000Z",
+          estado: "pendiente",
+          asignadoPor: "usuario_actual",
+          nota: "",
+          ultimaActualizacion: new Date().toISOString(),
+        },
       ]
+    
   
       const asignacionesPredefinidas = [
+        // --- ORIGINALES ---
         {
-          //id
           idUser: user.id,
           //idTarea: tareaData[0].id,
-          esPrioridad: true  // Propuesta técnica y estimación — e-commerce Grupo Andina (Prioridad: Sí)
+          esPrioridad: true,  // Propuesta técnica y estimación — e-commerce Grupo Andina
         },
         {
-          //id
           idUser: user.id,
           //idTarea: tareaData[1].id,
-          esPrioridad: false  // Plan de UAT — app logística LogiTrans (Prioridad: No)
+          esPrioridad: false, // Plan de UAT — app logística LogiTrans
         },
         {
-          //id
           idUser: user.id,
           //idTarea: tareaData[2].id,
-          esPrioridad: true  // Integración de pagos (MP) — RetailFit, checkout unificado (Prioridad: Sí)
+          esPrioridad: true,  // Integración de pagos (MP) — RetailFit
         },
         {
-          //id
           idUser: user.id,
           //idTarea: tareaData[3].id,
-          esPrioridad: false  // Tablero PMO de KPIs por proyecto (Flowbit interno) (Prioridad: No)
+          esPrioridad: false, // Tablero PMO de KPIs por proyecto (Flowbit interno)
         },
         {
-          //id
           idUser: user.id,
           //idTarea: tareaData[4].id,
-          esPrioridad: false  // Kickoff CRM SaludPlus — acta y plan de comunicaciones (Prioridad: No)
+          esPrioridad: false, // Kickoff CRM SaludPlus
         },
         {
-          //id
           idUser: user.id,
           //idTarea: tareaData[5].id,
-          esPrioridad: true  // Entrega Sprint 4 AgroData — demo y retro con cliente (Prioridad: Sí)
-        }
+          esPrioridad: true,  // Entrega Sprint 4 AgroData
+        },
+      
+        // --- NUEVAS (Histórico de Vencimientos - Flowbit) ---
+        {
+          idUser: user.id,
+          //idTarea: tareaData[6].id,
+          esPrioridad: false, // Migración de base de datos legacy a Firebase
+        },
+        {
+          idUser: user.id,
+          //idTarea: tareaData[7].id,
+          esPrioridad: false, // Documentación técnica del módulo de reportes
+        },
+        {
+          idUser: user.id,
+          //idTarea: tareaData[8].id,
+          esPrioridad: false, // Ajustes de seguridad en autenticación OAuth
+        },
+        {
+          idUser: user.id,
+          //idTarea: tareaData[9].id,
+          esPrioridad: false, // Diseño de interfaz para control de prioridades personales
+        },
+        {
+          idUser: user.id,
+          //idTarea: tareaData[10].id,
+          esPrioridad: false, // Revisión de logs del backend tras integración del tablero
+        },
       ]
+      
   
       // Verificar si el usuario ya tiene las tareas predefinidas asignadas
       const { data: asignacionesExistentes, error: checkAsignacionesError } = await supabase
