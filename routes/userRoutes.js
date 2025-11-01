@@ -1,7 +1,7 @@
-import { Router } from 'express';
-import { body, validationResult } from 'express-validator';
-import { hash, compare } from 'bcryptjs';
-import supabase from '../supabaseClient.js';
+const { Router } = require('express');
+const { body, validationResult } = require('express-validator');
+const { hash, compare } = require('bcryptjs');
+const supabase = require('../supabaseClient');
 
 const router = Router();
 const saltRounds = 10; // Definimos el factor de encriptación una sola vez
@@ -584,4 +584,5 @@ router.post('/recovery', [
     }
 });
 
-export default router;
+
+module.exports = router;

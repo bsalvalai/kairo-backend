@@ -1,9 +1,10 @@
-import 'dotenv/config';
-import express, { json } from 'express';
-import cors from 'cors';
-import userRoutes from './routes/userRoutes.js';
-import taskRoutes from './routes/taskRoutes.js';
-import reportsRoutes from './routes/reportsRoutes.js';
+//import 'dotenv/config';
+const express = require('express');
+const { json } = require('express');
+const cors = require('cors');
+const userRoutes = require('./routes/userRoutes');
+const taskRoutes = require('./routes/taskRoutes');
+const reportsRoutes = require('./routes/reportsRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -37,3 +38,5 @@ app.use((req, res) => {
     console.log(`Servidor corriendo en puerto ${PORT}`);
     console.log(`Health check: http://localhost:${PORT}/api/health`);
   });
+
+module.exports = app;

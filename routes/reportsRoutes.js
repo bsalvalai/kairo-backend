@@ -1,6 +1,6 @@
-import { Router } from 'express';
-import { body, validationResult, param } from 'express-validator';
-import supabase from '../supabaseClient.js';
+const { Router } = require('express');
+const { body, validationResult, param } = require('express-validator');
+const supabase = require('../supabaseClient');
 
 const router = Router();
 
@@ -203,4 +203,4 @@ router.get('/expired/:username', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error interno del servidor' });
     }
 });
-export default router;
+module.exports = router;

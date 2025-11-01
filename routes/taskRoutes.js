@@ -1,6 +1,6 @@
-import { Router } from 'express';
-import { body, validationResult, param } from 'express-validator';
-import supabase from '../supabaseClient.js';
+const { Router } = require('express');
+const { body, validationResult, param } = require('express-validator');
+const supabase = require('../supabaseClient');
 
 const router = Router();
 
@@ -823,4 +823,4 @@ router.put('/:taskId', [
     }
   });
 
-export default router;
+module.exports = router;

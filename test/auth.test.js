@@ -1,195 +1,217 @@
-// Configurar entorno de test
-process.env.NODE_ENV = 'test';
+const app = require('../index');
+const supertest = require('supertest');
+//const compare = jest.fn();
+const compare = require('bcryptjs').compare;
+const request = require('supertest');
 
-import request from 'supertest';
-import { expect } from 'chai';
-import { stub, restore } from 'sinon';
-import bcrypt from 'bcryptjs';
-import proxyquire from 'proxyquire';
+const hash = jest.fn().mockResolvedValue('fake-hashed-password-12345'); 
 
-// ----------------------------------------------------------------
-// 1. MOCKS DE SINON
-// ----------------------------------------------------------------
+// 2. Mock de Supabase Client
+const mockMaybeSingle = jest.fn(); // Para simular la búsqueda de existencia
+const mockInsert = jest.fn();       // Para simular la inserción de registro
 
-// Objeto que simula la cadena de consultas de Supabase (Query Builder).
-// Usa returnsThis() para que todos los métodos intermedios puedan encadenarse.
-const mockQueryBuilder = {
-    // Métodos intermedios encadenados
-    select: stub().returnsThis(),
-    or: stub().returnsThis(),
-    eq: stub().returnsThis(),
-    neq: stub().returnsThis(),
-    limit: stub().returnsThis(),
-    insert: stub().returnsThis(), // insert también retorna el builder
-    
-    // Métodos finales que devuelven Promesas
-    single: stub(), 
-    maybeSingle: stub(),
+// Simulamos la estructura de Supabase
+const supabase = {
+    from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        maybeSingle: mockMaybeSingle, // Usado en el login y en la verificación de registro
+        insert: jest.fn().mockReturnThis(),
+        single: mockInsert, // Se asume que el INSERT usa .single() o similar para finalizar
+    })),
 };
 
-// Objeto principal del cliente Supabase: .from() debe devolver el Query Builder.
-const mockSupabaseClient = {
-    from: stub().returns(mockQueryBuilder),
+
+// Valores de retorno simulados
+const FAKE_HASHED_ANSWER = 'hashed-answer-fake';
+const FAKE_NEW_PASSWORD_HASH = 'new-password-hash-fake';
+const MOCK_USER = {
+    id: 105, 
+    email: 'recovery@test.com', 
+    username: 'recuser', 
+    first_name: 'Test', 
+    last_name: 'User',
+    recovery_answer: FAKE_HASHED_ANSWER // La respuesta hasheada almacenada
 };
 
-let app;
-let bcryptStub;
 
-// ----------------------------------------------------------------
-// 2. BLOQUE DE PRUEBAS
-// ----------------------------------------------------------------
-describe('API Auth Endpoints', () => {
+// Se asume que 'saltRounds' se define o mockea si es necesario
+const saltRounds = 10; 
+
+
+describe("Tests de integracion de Login Y Register", () => {
+    test('Deberia devolver un 200 si el servidor esta funcionando', async () => {
+        const response = await supertest(app).get('/api/health');
+        expect(response.status).toBe(200);
+      });
+      
+      test('Deberia devolver un 401 si el usuario no existe', async () => {
+          const response = await supertest(app).post('/api/login').send({
+              email: 'test@test.com',
+              password: 'test'
+          });
+          expect(response.status).toBe(401);
+      }); 
+      
+      test('Deberia devolver un 200 si el usuario existe', async () => {
+          const response = await supertest(app).post('/api/login').send({
+              email: 'bausalvalai@flowbit.com',
+              password: 'uade123'
+          });
+          expect(response.status).toBe(200);
+      });
+      
+      test('Deberia devolver un 401 si la contraseña es incorrecta', async () => {
+          const response = await supertest(app).post('/api/login').send({
+              email: 'bausalvalai@flowbit.com',
+              password: 'incorrecta'
+          });
+          expect(response.status).toBe(401);
+      });
+      
+      test('Deberia devolver un 401 si el email es incorrecto', async () => {
+          const response = await supertest(app).post('/api/login').send({
+              email: 'incorrecto@flowbit.com',
+              password: 'uade123'
+          });
+          expect(response.status).toBe(401);
+      });
+      
+      test("Deberia devolver un 201 si el usuario se registra correctamente", async () => {
+          const response = await supertest(app).post('/api/register').send({
+              email: 'test@test.com',
+              password: 'test'
+          });
+          expect(response.status).toBe(201);
+      });
+      
+      test("Deberia devolver un 400 si el usuario ya existe", async () => {
+          const response = await supertest(app).post('/api/register').send({
+              email: 'test@test.com',
+              password: 'test'
+          });
+          expect(response.status).toBe(400);
+      });
+      
+      test("Deberia devolver un 400 si el usuario no se registra correctamente", async () => {
+          const response = await supertest(app).post('/api/register').send({
+              email: 'test@test.com',
+              password: 'test'
+          });
+          expect(response.status).toBe(400);
+      });
+});
+
+describe('Tests Unitarios de Registro (/api/register)', () => {
     
-    // Configuración que se ejecuta antes de cada test
     beforeEach(() => {
-        // Simular bcrypt.hash() para devolver un valor constante
-        bcryptStub = stub(bcrypt, 'hash').resolves('hashed_password_mock');
-        
-        // Cargar la aplicación, forzando que use nuestro mockSupabaseClient
-        app = proxyquire('../index', {
-            // Asegura que tu código usa este mock cuando llama a createClient()
-            '@supabase/supabase-js': {
-                createClient: stub().returns(mockSupabaseClient) 
-            }
-        });
-        
-        // Limpiar las respuestas simuladas del query builder antes de cada test
-        // Esto es necesario para evitar interferencias entre pruebas
-        mockQueryBuilder.single.reset();
-        mockQueryBuilder.maybeSingle.reset();
-        mockQueryBuilder.select.reset();
+        jest.clearAllMocks();
     });
 
-    // Limpieza que se ejecuta después de cada test
-    afterEach(() => {
-        // Restaura todos los stubs y espías a sus implementaciones originales
-        restore();
+    const mockUserData = {
+        email: 'nuevo.usuario@test.com',
+        password: 'PasswordSegura123',
+        username: 'newuser123'
+    };
+
+    // Test 1: Registro Exitoso (Caso principal)
+    test('Debe devolver 201 y éxito si el usuario es nuevo y los datos son válidos', async () => {
+        // A. Configurar Mocks:
+        
+        // 1. Simular que el usuario NO EXISTE (búsqueda inicial devuelve null)
+        mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
+
+        // 2. Simular el registro exitoso (Insert retorna éxito/data)
+        mockInsert.mockResolvedValueOnce({ data: { id: 202, ...mockUserData }, error: null });
+
+        // B. Ejecutar el test
+        const response = await request(app)
+            .post('/api/register')
+            .send(mockUserData);
+
+        // C. Verificaciones
+        expect(response.statusCode).toBe(201);
+        expect(response.body.success).toBe(true);
+        expect(response.body.message).toContain('Usuario creado exitosamente');
+
+        // Verificamos que se intentó insertar con la contraseña hasheada falsa
+        expect(supabase.from().insert).toHaveBeenCalledWith(
+            expect.objectContaining({
+                email: mockUserData.email,
+                username: mockUserData.username,
+                password: 'fake-hashed-password-12345' // ¡El hash mockeado!
+            })
+        );
+        // Verificamos que se llamó a la función de hasheo
+        expect(hash).toHaveBeenCalledWith(mockUserData.password); 
     });
 
-    // ----------------------------------------------------------------
-    // Prueba 1: Registro Exitoso
-    // ----------------------------------------------------------------
-    describe('POST /api/register', () => {
+    // Test 2: Fallo - Usuario ya existe (email duplicado)
+    test('Debe devolver 400 si el email ya existe', async () => {
+        // A. Configurar Mocks:
         
-        it('Debe registrar un nuevo usuario y devolver 201', async () => {
-            
-            // 1. Configurar la PRIMERA consulta: Verificar que el usuario NO existe
-            // Se asume que tu código usa .single() o .maybeSingle() para la verificación inicial.
-            mockQueryBuilder.single.resolves({
-                data: null, // No se encontró usuario existente
-                error: null
-            });
-            
-            // 2. Configurar la SEGUNDA consulta: La inserción exitosa
-            // La llamada de inserción es: .insert([...]).select()
-            // El último .select() debe devolver los datos insertados.
-            mockQueryBuilder.select.resolves({
-                data: [{ 
-                    id: 1, // Añade el id para que la aserción final funcione
-                    email: 'test@mail.com', 
-                    username: 'tester', 
-                    first_name: 'Test', 
-                    last_name: 'User',
-                    recovery_answer: 'hashed_password_mock' // Asumimos que se hashea
-                }],
-                error: null
-            });
-
-            const response = await request(app)
-                .post('/api/register')
-                .send({
-                    email: 'test@mail.com',
-                    username: 'tester',
-                    password: 'password123',
-                    firstName: 'Test',
-                    lastName: 'User',
-                    recoveryAnswer: 'Test answer'
-                });
-
-            // Afirmaciones
-            expect(response.statusCode).to.equal(201);
-            expect(response.body.success).to.be.true;
-            expect(response.body.user).to.have.property('id', 1);
-            // Verifica que bcrypt.hash se llamó dos veces (password y recoveryAnswer)
-            expect(bcryptStub.calledTwice).to.be.true; 
+        // 1. Simular que el usuario YA EXISTE (la búsqueda devuelve un usuario)
+        mockMaybeSingle.mockResolvedValueOnce({ 
+            data: { id: 50, email: mockUserData.email }, 
+            error: null 
         });
 
-        // ----------------------------------------------------------------
-        // Prueba 2: Datos de entrada inválidos
-        // ----------------------------------------------------------------
-        it('debe devolver 400 si la validación falla (ej. email inválido)', async () => {
-            const response = await request(app)
-                .post('/api/register')
-                .send({
-                    email: 'invalid-email', // Email inválido
-                    username: 'test',
-                    password: 'p', // Password muy corto
-                    firstName: 'Test',
-                    lastName: 'User',
-                    recoveryAnswer: 'Test answer'
-                });
+        // 2. Simular que la inserción NUNCA DEBE SER LLAMADA
+        mockInsert.mockResolvedValueOnce({ data: null, error: new Error('Error de DB') });
 
-            expect(response.statusCode).to.equal(400);
-            expect(response.body.success).to.be.false;
-            expect(response.body.errors).to.be.an('array').with.lengthOf.at.least(2);
-        });
+        // B. Ejecutar el test
+        const response = await request(app)
+            .post('/api/register')
+            .send(mockUserData);
 
-        // ----------------------------------------------------------------
-        // Prueba 3: Usuario ya existe
-        // ----------------------------------------------------------------
-        it('debe devolver 400 si el email o username ya están en uso', async () => {
-            // 1. Simular que el usuario SÍ existe
-            // Esto solo afecta a la llamada .single() / .maybeSingle()
-            mockQueryBuilder.single.resolves({
-                data: { email: 'existing@mail.com', username: 'existing' },
-                error: null
-            });
-            
-            const response = await request(app)
-                .post('/api/register')
-                .send({
-                    email: 'existing@mail.com',
-                    username: 'existing',
-                    password: 'password123',
-                    firstName: 'Test',
-                    lastName: 'User',
-                    recoveryAnswer: 'Test answer'
-                });
-
-            expect(response.statusCode).to.equal(400);
-            expect(response.body.success).to.be.false;
-            expect(response.body.message).to.equal('El email o username ya está en uso');
-        });
+        // C. Verificaciones
+        expect(response.statusCode).toBe(400);
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toContain('Datos de entrada inválidos'); // Asumiendo este mensaje
         
-        // ----------------------------------------------------------------
-        // Prueba 4: Fallo en la inserción de la base de datos
-        // ----------------------------------------------------------------
-        it('debe devolver 500 si la base de datos falla durante la inserción', async () => {
-            // 1. Simular la no existencia
-            mockQueryBuilder.single.resolves({ data: null, error: null });
+        // Verificamos que NUNCA se intentó hashear la contraseña ni insertar
+        expect(hash).not.toHaveBeenCalled();
+        expect(supabase.from().insert).not.toHaveBeenCalled();
+    });
 
-            // 2. Simular el fallo de la BD en la inserción
-            mockQueryBuilder.select.resolves({
-                data: null,
-                error: { message: 'Database constraint violation', code: '23505' }
+    // Test 3: Fallo - Datos faltantes (Validación de Express-validator)
+    test('Debe devolver 400 si falta el email (Validación)', async () => {
+        // Asumimos que Express-validator devuelve 400
+        const response = await request(app)
+            .post('/api/register')
+            .send({ 
+                password: 'test', 
+                username: 'fail' 
             });
 
-            const response = await request(app)
-                .post('/api/register')
-                .send({
-                    email: 'fail@mail.com',
-                    username: 'failer',
-                    password: 'password123',
-                    firstName: 'Test',
-                    lastName: 'User',
-                    recoveryAnswer: 'Test answer'
-                });
+        // C. Verificaciones
+        expect(response.statusCode).toBe(400);
+        expect(response.body.success).toBe(false);
+        expect(response.body.errors).toBeDefined(); // Si usas express-validator, revisa el cuerpo
+    });
+    
+    // Test 4: Fallo - Error en el servicio de la base de datos (Supabase)
+    test('Debe devolver 500 si hay un error en el servicio de la BD durante el INSERT', async () => {
+        // A. Configurar Mocks:
+        
+        // 1. Simular que el usuario NO EXISTE inicialmente
+        mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
 
-            expect(response.statusCode).to.equal(500);
-            expect(response.body.success).to.be.false;
-            expect(response.body.message).to.equal('Error interno del servidor');
-            // O, si tu código maneja el error de Supabase directamente:
-            // expect(response.body.message).to.include('Database constraint violation'); 
-        });
+        // 2. Simular que la inserción FALLA con un error real
+        mockInsert.mockResolvedValueOnce({ data: null, error: new Error('Database connection failed') });
+
+        // B. Ejecutar el test
+        const response = await request(app)
+            .post('/api/register')
+            .send(mockUserData);
+
+        // C. Verificaciones
+        expect(response.statusCode).toBe(500);
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toContain('Error en el servicio de la base de datos'); 
+        
+        // Verificamos que sí se llamó a hash y a insert (aunque insert falló)
+        expect(hash).toHaveBeenCalled();
+        expect(supabase.from().insert).toHaveBeenCalled();
     });
 });
